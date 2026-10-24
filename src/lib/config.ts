@@ -33,6 +33,59 @@ interface ConfigFileStruct {
   }
 }
 
+export const DEFAULT_CONFIG_JSON = JSON.stringify({
+  cache_time: 7200,
+  api_site: {
+    liangzi: {
+      api: 'https://cj.lziapi.com/api.php/provide/vod',
+      name: '量子资源 (秒开高画质)',
+    },
+    baofeng: {
+      api: 'https://bfzyapi.com/api.php/provide/vod',
+      name: '暴风资源 (经典全网库)',
+    },
+    subo: {
+      api: 'https://subocaiji.com/api.php/provide/vod',
+      name: '速播资源 (极速高清)',
+    },
+    feifan: {
+      api: 'https://cj.ffzyapi.com/api.php/provide/vod',
+      name: '非凡资源 (热播大片)',
+    },
+    ikun: {
+      api: 'https://ikunzyapi.com/api.php/provide/vod',
+      name: '爱坤资源 (聚合专线)',
+    },
+    modu: {
+      api: 'https://caiji.moduapi.cc/api.php/provide/vod',
+      name: '魔都资源 (全品类影视)',
+    },
+    yinghua: {
+      api: 'https://m3u8.apiyhzy.com/api.php/provide/vod',
+      name: '樱花动漫 (专属番剧)',
+    },
+  },
+  custom_category: [
+    { name: '热门电影', type: 'movie', query: '热门' },
+    { name: '热播电视剧', type: 'tv', query: '国产剧' },
+    { name: '美剧精选', type: 'tv', query: '美剧' },
+    { name: '日本动画', type: 'tv', query: '日本动画' },
+    { name: '经典片库', type: 'movie', query: '经典' },
+  ],
+  lives: {
+    speed: {
+      name: '精选高速直播 (央视卫视全通)',
+      url: 'https://libretv.wewee1.workers.dev/curated.m3u',
+      epg: 'https://epg.112114.xyz/pp.xml',
+    },
+    cctv: {
+      name: '华语国际精选',
+      url: 'https://iptv-org.github.io/iptv/languages/zho.m3u',
+      epg: 'https://epg.112114.xyz/pp.xml',
+    },
+  },
+});
+
 export const API_CONFIG = {
   search: {
     path: '?ac=videolist&wd=',
@@ -197,6 +250,9 @@ async function getInitConfig(configFile: string, subConfig: {
     AutoUpdate: false,
     LastCheck: "",
   }): Promise<AdminConfig> {
+  if (!configFile || !configFile.trim() || configFile === '{}') {
+    configFile = DEFAULT_CONFIG_JSON;
+  }
   let cfgFile: ConfigFileStruct;
   try {
     cfgFile = JSON.parse(configFile) as ConfigFileStruct;
@@ -363,6 +419,14 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     adminConfig.LiveConfig = [];
   }
 
+  // 若尚未配置任何采集源，自动装载内置高清播放源与精选直播源
+  if (adminConfig.SourceConfig.length === 0) {
+    if (!adminConfig.ConfigFile || !adminConfig.ConfigFile.trim() || adminConfig.ConfigFile === '{}') {
+      adminConfig.ConfigFile = DEFAULT_CONFIG_JSON;
+    }
+    adminConfig = refineConfig(adminConfig);
+  }
+
   // 站长变更自检
   const ownerUser = process.env.USERNAME;
 
@@ -414,6 +478,9 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   });
 
   // 直播源去重
+  if (!adminConfig.LiveConfig) {
+    adminConfig.LiveConfig = [];
+  }
   const seenLiveKeys = new Set<string>();
   adminConfig.LiveConfig = adminConfig.LiveConfig.filter((live) => {
     if (seenLiveKeys.has(live.key)) {
